@@ -3,7 +3,7 @@ Web app đơn giản cho Emotion Detection
 Sử dụng Flask để tạo web interface
 """
 
-from flask import Flask, render_template, request, jsonify, send_from_directory
+from flask import Flask, render_template, request, jsonify, send_from_directory, Response
 from werkzeug.utils import secure_filename
 import os
 import cv2
@@ -196,6 +196,95 @@ def predict():
 def result_file(filename):
     """Serve result images"""
     return send_from_directory(app.config['RESULT_FOLDER'], filename)
+
+@app.route('/video_feed')
+def video_feed():
+    """Video streaming route - trả về video stream"""
+    model_name = request.args.get('model', 'best2.pt')
+    return Response(generate_frames(model_name),
+                   mimetype='multipart/x-mixed-replace; boundary=frame')
+
+def generate_frames(model_name):
+    """Generator function để stream video frames"""
+    # Load model
+    if model_name == 'deepface':
+        use_deepface = True
+        model = None
+    else:
+        use_deepface = False
+        model = get_model(model_name)
+    
+    # Mở camera
+    camera = cv2.VideoCapture(0)
+    
+    if not camera.isOpened():
+        # Thử camera index khác
+        camera = cv2.VideoCapture(1)
+        if not camera.isOpened():
+            print("❌ Không thể mở camera!")
+            return
+    
+    camera.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+    camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+    camera.set(cv2.CAP_PROP_FPS, 30)
+    
+    print(f"✓ Camera đã mở - đang stream với model: {model_name}")
+    
+    try:
+        while True:
+            success, frame = camera.read()
+            if not success:
+                print("⚠️ Không đọc được frame")
+                break
+            
+            # Process frame
+            try:
+                if use_deepface:
+                    try:
+                        results = DeepFace.analyze(frame, actions=['emotion'], 
+                                                 enforce_detection=False, detector_backend='opencv')
+                        if not isinstance(results, list):
+                            results = [results]
+                        
+                        for face in results:
+                            region = face.get('region', {})
+                            x, y, w, h = region.get('x', 0), region.get('y', 0), region.get('w', 0), region.get('h', 0)
+                            emotion = face['dominant_emotion']
+                            
+                            color = EMOTION_COLORS.get(emotion.lower(), (255, 255, 255))
+                            cv2.rectangle(frame, (x, y), (x + w, y + h), color, 2)
+                            cv2.putText(frame, emotion.upper(), (x, y - 10), 
+                                       cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2)
+                    except Exception as e:
+                        pass
+                else:
+                    # YOLO detection
+                    results = model(frame, verbose=False)
+                    for r in results:
+                        boxes = r.boxes
+                        for box in boxes:
+                            x1, y1, x2, y2 = map(int, box.xyxy[0])
+                            conf = float(box.conf[0])
+                            cls = int(box.cls[0])
+                            emotion = model.names[cls]
+                            
+                            color = EMOTION_COLORS.get(emotion.lower(), (255, 255, 255))
+                            cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
+                            
+                            label = f"{emotion.upper()} {conf*100:.0f}%"
+                            cv2.putText(frame, label, (x1, y1 - 10), 
+                                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+            except Exception as e:
+                print(f"⚠️ Lỗi xử lý frame: {e}")
+            
+            # Encode frame
+            ret, buffer = cv2.imencode('.jpg', frame)
+            frame_bytes = buffer.tobytes()
+            
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+    finally:
+        camera.release()
 
 if __name__ == '__main__':
     print("="*70)

@@ -123,6 +123,17 @@
             box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
         }
 
+        input[type="radio"][name="cameraMode"]:checked + strong {
+            color: #667eea;
+        }
+
+        label:has(input[type="radio"][name="cameraMode"]:checked) {
+            border-color: #667eea !important;
+            background: #f0f4ff !important;
+            box-shadow: 0 3px 10px rgba(102, 126, 234, 0.3);
+            transform: translateY(-2px);
+        }
+
         .model-label:hover {
             border-color: #667eea;
             transform: translateY(-2px);
@@ -287,8 +298,11 @@
                 <button class="upload-btn" onclick="toggleMode('upload')" id="uploadModeBtn" style="margin-right: 10px;">
                     📷 Upload Ảnh
                 </button>
-                <button class="upload-btn" onclick="toggleMode('camera')" id="cameraModeBtn" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
+                <button class="upload-btn" onclick="toggleMode('camera')" id="cameraModeBtn" style="margin-right: 10px; background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
                     📹 Camera Trực Tiếp
+                </button>
+                <button class="upload-btn" onclick="toggleMode('capture')" id="captureModeBtn" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                    📸 Chụp & Phân Tích
                 </button>
             </div>
 
@@ -302,13 +316,36 @@
 
             <!-- Camera Section -->
             <div class="camera-section" id="cameraSection" style="display: none;">
+                <!-- Mode Selection for Camera -->
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                    <h3 style="color: #333; margin-bottom: 15px;">📹 Chế độ Camera</h3>
+                    <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+                        <label style="cursor: pointer; padding: 15px 30px; background: white; border: 2px solid #667eea; border-radius: 10px; transition: all 0.3s;">
+                            <input type="radio" name="cameraMode" value="server" checked style="margin-right: 10px;">
+                            <strong>Server Processing</strong><br>
+                            <small style="color: #6c757d;">Backend xử lý (chậm hơn)</small>
+                        </label>
+                        <label style="cursor: pointer; padding: 15px 30px; background: white; border: 2px solid #11998e; border-radius: 10px; transition: all 0.3s;">
+                            <input type="radio" name="cameraMode" value="browser" style="margin-right: 10px;">
+                            <strong>Browser API</strong><br>
+                            <small style="color: #6c757d;">Face Detection API (nhanh hơn)</small>
+                        </label>
+                    </div>
+                </div>
+
                 <div style="text-align: center;">
-                    <img id="videoStream" width="640" height="480" style="border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); display: none;">
+                    <div id="serverStreamContainer" style="display: block;">
+                        <img id="videoStream" width="640" height="480" style="border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); display: none;">
+                    </div>
+                    <div id="browserStreamContainer" style="display: none;">
+                        <video id="browserVideo" width="640" height="480" autoplay style="border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.2);"></video>
+                        <canvas id="browserCanvas" width="640" height="480" style="border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); display: none;"></canvas>
+                    </div>
                     <div id="cameraPlaceholder" style="width: 640px; height: 480px; margin: 0 auto; background: #f8f9fa; border-radius: 15px; display: flex; align-items: center; justify-content: center; border: 3px dashed #667eea;">
                         <div>
                             <div style="font-size: 4em; margin-bottom: 20px;">📹</div>
                             <h3>Camera Realtime</h3>
-                            <p style="color: #6c757d; margin-top: 10px;">Click "Bật Camera Realtime" để bắt đầu</p>
+                            <p style="color: #6c757d; margin-top: 10px;">Chọn chế độ và click "Bật Camera" để bắt đầu</p>
                         </div>
                     </div>
                     <div style="margin-top: 20px;">
@@ -316,6 +353,35 @@
                             🎥 Bật Camera Realtime
                         </button>
                         <button class="upload-btn" onclick="stopRealtimeCamera()" id="stopRealtimeBtn" style="display: none; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                            ⏹️ Tắt Camera
+                        </button>
+                    </div>
+                    <div id="browserDetectionInfo" style="margin-top: 15px; padding: 10px; background: #e7f3ff; border-radius: 8px; display: none;">
+                        <strong>Faces detected: <span id="faceCount">0</span></strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Capture & Analyze Section -->
+            <div class="capture-section" id="captureSection" style="display: none;">
+                <div style="text-align: center;">
+                    <video id="captureVideo" width="640" height="480" autoplay style="border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.2);"></video>
+                    <canvas id="captureCanvas" style="display: none;"></canvas>
+                    <div id="capturePlaceholder" style="width: 640px; height: 480px; margin: 0 auto; background: #f8f9fa; border-radius: 15px; display: flex; align-items: center; justify-content: center; border: 3px dashed #4facfe;">
+                        <div>
+                            <div style="font-size: 4em; margin-bottom: 20px;">📸</div>
+                            <h3>Chụp & Phân Tích Cảm Xúc</h3>
+                            <p style="color: #6c757d; margin-top: 10px;">Bật camera và chụp ảnh để phân tích chi tiết</p>
+                        </div>
+                    </div>
+                    <div style="margin-top: 20px;">
+                        <button class="upload-btn" onclick="startCaptureMode()" id="startCaptureBtn">
+                            🎥 Bật Camera
+                        </button>
+                        <button class="upload-btn" onclick="captureAndAnalyze()" id="captureAnalyzeBtn" style="display: none; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                            📸 Chụp & Phân Tích Ngay
+                        </button>
+                        <button class="upload-btn" onclick="stopCaptureMode()" id="stopCaptureBtn" style="display: none; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
                             ⏹️ Tắt Camera
                         </button>
                     </div>
@@ -420,77 +486,388 @@
         let selectedFile = null;
         let stream = null;
         let currentMode = 'upload';
+        let browserDetectionInterval = null;
+        let faceDetector = null;
+
+        // Emotion colors for browser detection
+        const emotionColors = {
+            'angry': '#FF0000',
+            'anger': '#FF0000',
+            'disgust': '#FFFF00',
+            'fear': '#FF00FF',
+            'happy': '#00FF00',
+            'sad': '#0000FF',
+            'surprise': '#FFA500',
+            'neutral': '#808080',
+            'content': '#9314FF'
+        };
 
         // Mode toggle
         function toggleMode(mode) {
             currentMode = mode;
+            
+            // Hide all sections
+            document.getElementById('uploadSection').style.display = 'none';
+            document.getElementById('cameraSection').style.display = 'none';
+            document.getElementById('captureSection').style.display = 'none';
+            document.getElementById('previewSection').classList.remove('active');
+            
+            // Reset button styles
+            document.getElementById('uploadModeBtn').style.opacity = '0.6';
+            document.getElementById('cameraModeBtn').style.opacity = '0.6';
+            document.getElementById('captureModeBtn').style.opacity = '0.6';
+            
+            // Show selected section
             if (mode === 'upload') {
                 document.getElementById('uploadSection').style.display = 'block';
-                document.getElementById('cameraSection').style.display = 'none';
-                document.getElementById('uploadModeBtn').style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
-                document.getElementById('cameraModeBtn').style.background = 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)';
                 document.getElementById('uploadModeBtn').style.opacity = '1';
-                document.getElementById('cameraModeBtn').style.opacity = '0.6';
-                stopCamera();
-            } else {
-                document.getElementById('uploadSection').style.display = 'none';
+                stopRealtimeCamera();
+                stopCaptureMode();
+            } else if (mode === 'camera') {
                 document.getElementById('cameraSection').style.display = 'block';
-                document.getElementById('uploadModeBtn').style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
-                document.getElementById('cameraModeBtn').style.background = 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)';
-                document.getElementById('uploadModeBtn').style.opacity = '0.6';
                 document.getElementById('cameraModeBtn').style.opacity = '1';
+                stopCaptureMode();
+            } else if (mode === 'capture') {
+                document.getElementById('captureSection').style.display = 'block';
+                document.getElementById('captureModeBtn').style.opacity = '1';
+                stopRealtimeCamera();
             }
-            document.getElementById('previewSection').classList.remove('active');
         }
 
-        // Camera functions
-        async function startCamera() {
+        // Camera Realtime functions
+        async function startRealtimeCamera() {
+            const cameraMode = document.querySelector('input[name="cameraMode"]:checked').value;
+            const placeholder = document.getElementById('cameraPlaceholder');
+            
+            placeholder.style.display = 'none';
+            document.getElementById('startRealtimeBtn').style.display = 'none';
+            document.getElementById('stopRealtimeBtn').style.display = 'inline-block';
+            
+            if (cameraMode === 'server') {
+                // Server-side processing
+                const model = document.querySelector('input[name="model"]:checked').value;
+                const videoStream = document.getElementById('videoStream');
+                
+                document.getElementById('serverStreamContainer').style.display = 'block';
+                document.getElementById('browserStreamContainer').style.display = 'none';
+                
+                videoStream.src = '/video_feed?model=' + model;
+                videoStream.style.display = 'block';
+            } else {
+                // Browser-side Face Detection API
+                document.getElementById('serverStreamContainer').style.display = 'none';
+                document.getElementById('browserStreamContainer').style.display = 'block';
+                document.getElementById('browserDetectionInfo').style.display = 'block';
+                
+                await startBrowserDetection();
+            }
+            
+            document.getElementById('error').classList.remove('active');
+        }
+
+        async function startBrowserDetection() {
             try {
+                // Get camera stream
                 stream = await navigator.mediaDevices.getUserMedia({ 
                     video: { width: 640, height: 480 } 
                 });
-                document.getElementById('video').srcObject = stream;
-                document.getElementById('startCameraBtn').style.display = 'none';
-                document.getElementById('stopCameraBtn').style.display = 'inline-block';
-                document.getElementById('captureBtn').style.display = 'inline-block';
+
+                const video = document.getElementById('browserVideo');
+                const canvas = document.getElementById('browserCanvas');
+                const ctx = canvas.getContext('2d');
+
+                video.srcObject = stream;
+                video.style.display = 'none';
+                canvas.style.display = 'block';
+
+                // Get selected model for emotion classification
+                const model = document.querySelector('input[name="model"]:checked').value;
+
+                // Check if Face Detection API is available
+                let useFaceDetectorAPI = false;
+                if ('FaceDetector' in window) {
+                    try {
+                        faceDetector = new FaceDetector({ fastMode: true, maxDetectedFaces: 10 });
+                        // Test if it works
+                        await new Promise((resolve, reject) => {
+                            video.onloadedmetadata = async () => {
+                                try {
+                                    await faceDetector.detect(video);
+                                    useFaceDetectorAPI = true;
+                                    console.log('✓ Using Face Detection API');
+                                    resolve();
+                                } catch (e) {
+                                    console.log('⚠️ Face Detection API unavailable, using backend processing');
+                                    resolve();
+                                }
+                            };
+                        });
+                    } catch (e) {
+                        console.log('⚠️ Face Detection API not supported');
+                    }
+                } else {
+                    console.log('⚠️ Face Detection API not available in this browser');
+                }
+
+                // Start detection loop
+                let isProcessing = false;
+                browserDetectionInterval = setInterval(async () => {
+                    if (isProcessing || video.readyState !== video.HAVE_ENOUGH_DATA) return;
+                    isProcessing = true;
+
+                    try {
+                        // Draw current video frame to canvas
+                        ctx.drawImage(video, 0, 0, 640, 480);
+
+                        if (useFaceDetectorAPI) {
+                            // Use browser Face Detection API
+                            try {
+                                const faces = await faceDetector.detect(video);
+                                document.getElementById('faceCount').textContent = faces.length;
+
+                                // Redraw with detections
+                                ctx.drawImage(video, 0, 0, 640, 480);
+
+                                faces.forEach((face, idx) => {
+                                    const { top, left, width, height } = face.boundingBox;
+
+                                    ctx.strokeStyle = '#00FF00';
+                                    ctx.lineWidth = 3;
+                                    ctx.strokeRect(left, top, width, height);
+
+                                    ctx.fillStyle = '#00FF00';
+                                    ctx.font = 'bold 16px Arial';
+                                    ctx.fillText(`Face ${idx + 1}`, left, top - 10);
+
+                                    // Draw landmarks
+                                    if (face.landmarks) {
+                                        ctx.fillStyle = '#FF0000';
+                                        face.landmarks.forEach(landmark => {
+                                            landmark.locations.forEach(point => {
+                                                ctx.beginPath();
+                                                ctx.arc(point.x, point.y, 3, 0, 2 * Math.PI);
+                                                ctx.fill();
+                                            });
+                                        });
+                                    }
+                                });
+                            } catch (apiError) {
+                                console.error('Face Detection API error:', apiError);
+                                // Fallback to backend
+                                useFaceDetectorAPI = false;
+                            }
+                        } else {
+                            // Use backend processing via API
+                            canvas.toBlob(async (blob) => {
+                                const formData = new FormData();
+                                formData.append('file', blob, 'frame.jpg');
+                                formData.append('model', model);
+
+                                try {
+                                    const response = await fetch('/predict', {
+                                        method: 'POST',
+                                        body: formData
+                                    });
+                                    
+                                    const data = await response.json();
+                                    
+                                    if (data.success && data.detections) {
+                                        document.getElementById('faceCount').textContent = data.detections.length;
+                                        
+                                        // Draw detections on canvas
+                                        ctx.drawImage(video, 0, 0, 640, 480);
+                                        
+                                        data.detections.forEach((det, idx) => {
+                                            const [x1, y1, x2, y2] = det.bbox;
+                                            const emotion = det.emotion;
+                                            
+                                            // Draw rectangle
+                                            ctx.strokeStyle = emotionColors[emotion.toLowerCase()] || '#00FF00';
+                                            ctx.lineWidth = 3;
+                                            ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+                                            
+                                            // Draw label
+                                            const label = `${emotion.toUpperCase()} ${det.confidence || ''}`;
+                                            ctx.fillStyle = emotionColors[emotion.toLowerCase()] || '#00FF00';
+                                            ctx.font = 'bold 16px Arial';
+                                            ctx.fillText(label, x1, y1 - 10);
+                                        });
+                                    }
+                                } catch (fetchError) {
+                                    console.error('Backend processing error:', fetchError);
+                                }
+                            }, 'image/jpeg', 0.8);
+                        }
+
+                    } catch (err) {
+                        console.error('Detection error:', err);
+                    }
+
+                    isProcessing = false;
+                }, useFaceDetectorAPI ? 100 : 300); // Faster for API, slower for backend
+
+            } catch (err) {
+                showError('Không thể truy cập camera: ' + err.message);
+                stopRealtimeCamera();
+            }
+        }
+
+        function stopRealtimeCamera() {
+            const videoStream = document.getElementById('videoStream');
+            const browserVideo = document.getElementById('browserVideo');
+            const placeholder = document.getElementById('cameraPlaceholder');
+            
+            // Stop server stream
+            videoStream.src = '';
+            videoStream.style.display = 'none';
+            
+            // Stop browser stream
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                browserVideo.srcObject = null;
+                stream = null;
+            }
+
+            if (browserDetectionInterval) {
+                clearInterval(browserDetectionInterval);
+                browserDetectionInterval = null;
+            }
+
+            document.getElementById('browserVideo').style.display = 'none';
+            document.getElementById('browserCanvas').style.display = 'none';
+            document.getElementById('browserDetectionInfo').style.display = 'none';
+            placeholder.style.display = 'flex';
+            
+            document.getElementById('startRealtimeBtn').style.display = 'inline-block';
+            document.getElementById('stopRealtimeBtn').style.display = 'none';
+            document.getElementById('captureAnalyzeBtn').style.display = 'none';
+        }
+
+        // Capture Mode functions
+        let captureStream = null;
+
+        async function startCaptureMode() {
+            try {
+                captureStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { width: 640, height: 480 } 
+                });
+
+                const video = document.getElementById('captureVideo');
+                video.srcObject = captureStream;
+                
+                document.getElementById('capturePlaceholder').style.display = 'none';
+                video.style.display = 'block';
+                
+                document.getElementById('startCaptureBtn').style.display = 'none';
+                document.getElementById('captureAnalyzeBtn').style.display = 'inline-block';
+                document.getElementById('stopCaptureBtn').style.display = 'inline-block';
             } catch (err) {
                 showError('Không thể truy cập camera: ' + err.message);
             }
         }
 
-        function stopCamera() {
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-                document.getElementById('video').srcObject = null;
-                stream = null;
-                document.getElementById('startCameraBtn').style.display = 'inline-block';
-                document.getElementById('stopCameraBtn').style.display = 'none';
-                document.getElementById('captureBtn').style.display = 'none';
+        function stopCaptureMode() {
+            if (captureStream) {
+                captureStream.getTracks().forEach(track => track.stop());
+                captureStream = null;
             }
+            
+            const video = document.getElementById('captureVideo');
+            video.srcObject = null;
+            video.style.display = 'none';
+            
+            document.getElementById('capturePlaceholder').style.display = 'flex';
+            document.getElementById('startCaptureBtn').style.display = 'inline-block';
+            document.getElementById('captureAnalyzeBtn').style.display = 'none';
+            document.getElementById('stopCaptureBtn').style.display = 'none';
         }
 
-        function captureFrame() {
-            const video = document.getElementById('video');
-            const canvas = document.getElementById('canvas');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
+        async function captureAndAnalyze() {
+            const model = document.querySelector('input[name="model"]:checked').value;
+            const video = document.getElementById('captureVideo');
+            const canvas = document.getElementById('captureCanvas');
+            
+            canvas.width = 640;
+            canvas.height = 480;
             const ctx = canvas.getContext('2d');
-            ctx.drawImage(video, 0, 0);
+            
+            // Capture frame
+            ctx.drawImage(video, 0, 0, 640, 480);
             
             // Convert to blob
-            canvas.toBlob((blob) => {
-                selectedFile = new File([blob], 'camera_capture.jpg', { type: 'image/jpeg' });
+            const imageBlob = await new Promise(resolve => {
+                canvas.toBlob(resolve, 'image/jpeg', 0.95);
+            });
+            
+            // Show loading
+            document.getElementById('loading').classList.add('active');
+            document.getElementById('error').classList.remove('active');
+            
+            // Send to server for analysis
+            const formData = new FormData();
+            formData.append('file', imageBlob, 'camera_capture.jpg');
+            formData.append('model', model);
+            
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    body: formData
+                });
                 
-                // Preview
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    document.getElementById('originalImage').src = e.target.result;
-                };
-                reader.readAsDataURL(selectedFile);
+                const data = await response.json();
                 
-                // Process immediately
-                processImage();
-            }, 'image/jpeg', 0.95);
+                document.getElementById('loading').classList.remove('active');
+                
+                if (data.success) {
+                    // Show captured image as original
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        document.getElementById('originalImage').src = e.target.result;
+                    };
+                    reader.readAsDataURL(imageBlob);
+                    
+                    // Show result
+                    document.getElementById('resultImage').src = data.result_image + '?t=' + new Date().getTime();
+                    document.getElementById('previewSection').classList.add('active');
+                    
+                    // Show detections
+                    const detectionsList = document.getElementById('detectionsList');
+                    detectionsList.innerHTML = '';
+                    
+                    if (data.detections.length === 0) {
+                        detectionsList.innerHTML = '<p style="color: #6c757d;">Không phát hiện khuôn mặt nào</p>';
+                    } else {
+                        data.detections.forEach((det, idx) => {
+                            const item = document.createElement('div');
+                            item.className = 'detection-item';
+                            
+                            let content = `<strong>Face ${idx + 1}:</strong> `;
+                            content += `Emotion: <strong>${det.emotion}</strong>`;
+                            
+                            if (det.confidence) {
+                                content += ` (${det.confidence})`;
+                            }
+                            if (det.age) {
+                                content += ` | Age: ${det.age}`;
+                            }
+                            if (det.gender) {
+                                content += ` | Gender: ${det.gender}`;
+                            }
+                            
+                            item.innerHTML = content;
+                            detectionsList.appendChild(item);
+                        });
+                    }
+                    
+                    // Scroll to results
+                    document.getElementById('previewSection').scrollIntoView({ behavior: 'smooth' });
+                } else {
+                    showError(data.error || 'Có lỗi xảy ra khi phân tích!');
+                }
+            } catch (error) {
+                document.getElementById('loading').classList.remove('active');
+                showError('Lỗi kết nối: ' + error.message);
+            }
         }
 
         // Drag and drop
