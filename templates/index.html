@@ -282,12 +282,44 @@
         </header>
 
         <div class="content">
+            <!-- Mode Selection -->
+            <div style="text-align: center; margin-bottom: 20px;">
+                <button class="upload-btn" onclick="toggleMode('upload')" id="uploadModeBtn" style="margin-right: 10px;">
+                    📷 Upload Ảnh
+                </button>
+                <button class="upload-btn" onclick="toggleMode('camera')" id="cameraModeBtn" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
+                    📹 Camera Trực Tiếp
+                </button>
+            </div>
+
             <!-- Upload Section -->
             <div class="upload-section" id="uploadSection" onclick="document.getElementById('fileInput').click()">
                 <div class="upload-icon">📷</div>
                 <h2>Kéo thả ảnh vào đây hoặc click để chọn</h2>
                 <p style="margin-top: 10px; color: #6c757d;">Hỗ trợ: JPG, PNG (tối đa 16MB)</p>
                 <input type="file" id="fileInput" accept="image/*" onchange="handleFileSelect(event)">
+            </div>
+
+            <!-- Camera Section -->
+            <div class="camera-section" id="cameraSection" style="display: none;">
+                <div style="text-align: center;">
+                    <img id="videoStream" width="640" height="480" style="border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); display: none;">
+                    <div id="cameraPlaceholder" style="width: 640px; height: 480px; margin: 0 auto; background: #f8f9fa; border-radius: 15px; display: flex; align-items: center; justify-content: center; border: 3px dashed #667eea;">
+                        <div>
+                            <div style="font-size: 4em; margin-bottom: 20px;">📹</div>
+                            <h3>Camera Realtime</h3>
+                            <p style="color: #6c757d; margin-top: 10px;">Click "Bật Camera Realtime" để bắt đầu</p>
+                        </div>
+                    </div>
+                    <div style="margin-top: 20px;">
+                        <button class="upload-btn" onclick="startRealtimeCamera()" id="startRealtimeBtn">
+                            🎥 Bật Camera Realtime
+                        </button>
+                        <button class="upload-btn" onclick="stopRealtimeCamera()" id="stopRealtimeBtn" style="display: none; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                            ⏹️ Tắt Camera
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <!-- Model Selection -->
@@ -386,6 +418,80 @@
 
     <script>
         let selectedFile = null;
+        let stream = null;
+        let currentMode = 'upload';
+
+        // Mode toggle
+        function toggleMode(mode) {
+            currentMode = mode;
+            if (mode === 'upload') {
+                document.getElementById('uploadSection').style.display = 'block';
+                document.getElementById('cameraSection').style.display = 'none';
+                document.getElementById('uploadModeBtn').style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                document.getElementById('cameraModeBtn').style.background = 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)';
+                document.getElementById('uploadModeBtn').style.opacity = '1';
+                document.getElementById('cameraModeBtn').style.opacity = '0.6';
+                stopCamera();
+            } else {
+                document.getElementById('uploadSection').style.display = 'none';
+                document.getElementById('cameraSection').style.display = 'block';
+                document.getElementById('uploadModeBtn').style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                document.getElementById('cameraModeBtn').style.background = 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)';
+                document.getElementById('uploadModeBtn').style.opacity = '0.6';
+                document.getElementById('cameraModeBtn').style.opacity = '1';
+            }
+            document.getElementById('previewSection').classList.remove('active');
+        }
+
+        // Camera functions
+        async function startCamera() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { width: 640, height: 480 } 
+                });
+                document.getElementById('video').srcObject = stream;
+                document.getElementById('startCameraBtn').style.display = 'none';
+                document.getElementById('stopCameraBtn').style.display = 'inline-block';
+                document.getElementById('captureBtn').style.display = 'inline-block';
+            } catch (err) {
+                showError('Không thể truy cập camera: ' + err.message);
+            }
+        }
+
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                document.getElementById('video').srcObject = null;
+                stream = null;
+                document.getElementById('startCameraBtn').style.display = 'inline-block';
+                document.getElementById('stopCameraBtn').style.display = 'none';
+                document.getElementById('captureBtn').style.display = 'none';
+            }
+        }
+
+        function captureFrame() {
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0);
+            
+            // Convert to blob
+            canvas.toBlob((blob) => {
+                selectedFile = new File([blob], 'camera_capture.jpg', { type: 'image/jpeg' });
+                
+                // Preview
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    document.getElementById('originalImage').src = e.target.result;
+                };
+                reader.readAsDataURL(selectedFile);
+                
+                // Process immediately
+                processImage();
+            }, 'image/jpeg', 0.95);
+        }
 
         // Drag and drop
         const uploadSection = document.getElementById('uploadSection');
