@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emotion Detection - AI Web App</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .upload-section {
+            background: #f8f9fa;
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .upload-section:hover {
+            background: #e9ecef;
+            border-color: #764ba2;
+        }
+
+        .upload-section.dragover {
+            background: #e9ecef;
+            border-color: #764ba2;
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 4em;
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .model-selection {
+            margin-bottom: 30px;
+        }
+
+        .model-selection h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .model-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .model-option {
+            position: relative;
+        }
+
+        .model-option input[type="radio"] {
+            display: none;
+        }
+
+        .model-label {
+            display: block;
+            padding: 15px 20px;
+            background: #f8f9fa;
+            border: 2px solid #dee2e6;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }
+
+        .model-option input[type="radio"]:checked + .model-label {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .model-label:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+        }
+
+        .model-name {
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-bottom: 5px;
+        }
+
+        .model-desc {
+            font-size: 0.85em;
+            opacity: 0.8;
+        }
+
+        .upload-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.1em;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .upload-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .preview-section {
+            display: none;
+            margin-bottom: 30px;
+        }
+
+        .preview-section.active {
+            display: block;
+        }
+
+        .image-container {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .image-box {
+            flex: 1;
+            min-width: 300px;
+        }
+
+        .image-box h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        .image-box img {
+            width: 100%;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .results-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .results-section h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .detection-item {
+            background: white;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .detection-item strong {
+            color: #667eea;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .error.active {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 1.8em;
+            }
+
+            .content {
+                padding: 20px;
+            }
+
+            .image-container {
+                flex-direction: column;
+            }
+
+            .model-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎭 Emotion Detection AI</h1>
+            <p>Upload ảnh và phát hiện cảm xúc với AI</p>
+        </header>
+
+        <div class="content">
+            <!-- Upload Section -->
+            <div class="upload-section" id="uploadSection" onclick="document.getElementById('fileInput').click()">
+                <div class="upload-icon">📷</div>
+                <h2>Kéo thả ảnh vào đây hoặc click để chọn</h2>
+                <p style="margin-top: 10px; color: #6c757d;">Hỗ trợ: JPG, PNG (tối đa 16MB)</p>
+                <input type="file" id="fileInput" accept="image/*" onchange="handleFileSelect(event)">
+            </div>
+
+            <!-- Model Selection -->
+            <div class="model-selection">
+                <h3>⚙️ Chọn Model</h3>
+                <div class="model-grid">
+                    <div class="model-option">
+                        <input type="radio" name="model" id="model_best2" value="best2.pt" checked>
+                        <label for="model_best2" class="model-label">
+                            <div class="model-name">Best 2</div>
+                            <div class="model-desc">Tốt nhất</div>
+                        </label>
+                    </div>
+                    <div class="model-option">
+                        <input type="radio" name="model" id="model_last2" value="last2.pt">
+                        <label for="model_last2" class="model-label">
+                            <div class="model-name">Last 2</div>
+                            <div class="model-desc">Mới nhất</div>
+                        </label>
+                    </div>
+                    <div class="model-option">
+                        <input type="radio" name="model" id="model_best" value="best.pt">
+                        <label for="model_best" class="model-label">
+                            <div class="model-name">Best</div>
+                            <div class="model-desc">Custom YOLO</div>
+                        </label>
+                    </div>
+                    <div class="model-option">
+                        <input type="radio" name="model" id="model_last" value="last.pt">
+                        <label for="model_last" class="model-label">
+                            <div class="model-name">Last</div>
+                            <div class="model-desc">Custom YOLO</div>
+                        </label>
+                    </div>
+                    <div class="model-option">
+                        <input type="radio" name="model" id="model_yolov8" value="yolov8n.pt">
+                        <label for="model_yolov8" class="model-label">
+                            <div class="model-name">YOLOv8n</div>
+                            <div class="model-desc">Base model</div>
+                        </label>
+                    </div>
+                    <div class="model-option">
+                        <input type="radio" name="model" id="model_yolo11" value="yolo11n.pt">
+                        <label for="model_yolo11" class="model-label">
+                            <div class="model-name">YOLO11n</div>
+                            <div class="model-desc">Base model</div>
+                        </label>
+                    </div>
+                    <div class="model-option">
+                        <input type="radio" name="model" id="model_deepface" value="deepface">
+                        <label for="model_deepface" class="model-label">
+                            <div class="model-name">DeepFace</div>
+                            <div class="model-desc">Age + Gender</div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Process Button -->
+            <div style="text-align: center; margin-bottom: 30px;">
+                <button class="upload-btn" id="processBtn" onclick="processImage()" disabled>
+                    🚀 Phát hiện cảm xúc
+                </button>
+            </div>
+
+            <!-- Loading -->
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Đang xử lý ảnh...</p>
+            </div>
+
+            <!-- Error -->
+            <div class="error" id="error"></div>
+
+            <!-- Preview Section -->
+            <div class="preview-section" id="previewSection">
+                <div class="image-container">
+                    <div class="image-box">
+                        <h3>📸 Ảnh gốc</h3>
+                        <img id="originalImage" src="" alt="Original">
+                    </div>
+                    <div class="image-box">
+                        <h3>🎯 Kết quả</h3>
+                        <img id="resultImage" src="" alt="Result">
+                    </div>
+                </div>
+
+                <!-- Results -->
+                <div class="results-section" id="resultsSection">
+                    <h3>📊 Chi tiết phát hiện</h3>
+                    <div id="detectionsList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedFile = null;
+
+        // Drag and drop
+        const uploadSection = document.getElementById('uploadSection');
+        
+        uploadSection.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadSection.classList.add('dragover');
+        });
+
+        uploadSection.addEventListener('dragleave', () => {
+            uploadSection.classList.remove('dragover');
+        });
+
+        uploadSection.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadSection.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        function handleFileSelect(event) {
+            const files = event.target.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        }
+
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) {
+                showError('Vui lòng chọn file ảnh!');
+                return;
+            }
+
+            selectedFile = file;
+            
+            // Preview
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById('originalImage').src = e.target.result;
+                document.getElementById('processBtn').disabled = false;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function processImage() {
+            if (!selectedFile) {
+                showError('Vui lòng chọn ảnh trước!');
+                return;
+            }
+
+            const model = document.querySelector('input[name="model"]:checked').value;
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('model', model);
+
+            // Show loading
+            document.getElementById('loading').classList.add('active');
+            document.getElementById('error').classList.remove('active');
+            document.getElementById('previewSection').classList.remove('active');
+
+            // Call API
+            fetch('/predict', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('loading').classList.remove('active');
+
+                if (data.success) {
+                    // Show results
+                    document.getElementById('resultImage').src = data.result_image + '?t=' + new Date().getTime();
+                    document.getElementById('previewSection').classList.add('active');
+
+                    // Show detections
+                    const detectionsList = document.getElementById('detectionsList');
+                    detectionsList.innerHTML = '';
+
+                    data.detections.forEach((det, idx) => {
+                        const item = document.createElement('div');
+                        item.className = 'detection-item';
+                        
+                        let content = `<strong>Face ${idx + 1}:</strong> `;
+                        content += `Emotion: <strong>${det.emotion}</strong>`;
+                        
+                        if (det.confidence) {
+                            content += ` (${det.confidence})`;
+                        }
+                        if (det.age) {
+                            content += ` | Age: ${det.age}`;
+                        }
+                        if (det.gender) {
+                            content += ` | Gender: ${det.gender}`;
+                        }
+                        
+                        item.innerHTML = content;
+                        detectionsList.appendChild(item);
+                    });
+                } else {
+                    showError(data.error || 'Có lỗi xảy ra!');
+                }
+            })
+            .catch(error => {
+                document.getElementById('loading').classList.remove('active');
+                showError('Lỗi kết nối: ' + error.message);
+            });
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.classList.add('active');
+        }
+    </script>
+</body>
+</html>

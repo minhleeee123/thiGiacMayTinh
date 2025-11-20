@@ -1,0 +1,11 @@
+{
+    "files.associations": {
+        "*.dbclient-js": "javascript",
+        "*.html": "html",
+        "initializer_list": "cpp",
+        "vector": "cpp",
+        "xiosbase": "cpp",
+        "xstring": "cpp",
+        "xutility": "cpp"
+    }
+}
